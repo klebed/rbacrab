@@ -1,0 +1,12 @@
+[package]
+name = "rbacrab"
+version = "0.0.1"
+edition = "2024"
+description = "Rust 🦀RBAC🦀 library with some crabby🦀🧙 macro magic! Not so blazingly fast yet, but has all 🚀🚀🚀 chances."
+authors = [
+    "Kirill Lebedev (https://github.com/klebed)", 
+    ]
+publish = false
+
+[dependencies]
+serde = {version = "1", features = ["serde_derive"]}
