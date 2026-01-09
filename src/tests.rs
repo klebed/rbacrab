@@ -233,3 +233,42 @@ fn test_action_set_patterns() {
             .is_err()
     );
 }
+
+#[test]
+fn test_update_roles() {
+    let rbac_service = setup_rbac();
+
+    let creator = User {
+        name: "creator".to_string(),
+        roles: vec!["TemplateCreator".to_string()],
+    };
+
+    assert!(
+        rbac_service
+            .has_permission(&creator, Templates::Template::Write)
+            .is_ok()
+    );
+
+    let mut updater = rbac_service.updater_clean();
+    updater.add_role(Role {
+            name: "TemplateCreator".to_string(),
+            permissions: vec![
+                "Templates::Template::{Create}".to_string(),
+                "Users::Notify::Write".to_string(),
+            ],
+        });
+
+    updater.update(&rbac_service);
+
+    assert!(
+        rbac_service
+            .has_permission(&creator, Templates::Template::Write)
+            .is_err()
+    );
+
+    assert!(
+        rbac_service
+            .has_permission(&creator, Users::Notify::Write)
+            .is_ok()
+    );
+}

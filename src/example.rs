@@ -77,7 +77,7 @@ pub mod test {
 
     pub fn setup_rbac() -> RbacService {
         // Setup roles (normally loaded from DB)
-        let mut service = RbacService::new(None);
+        let mut service = RbacService::builder();
 
         // Register all permissions (just in case we need full list)
         Users::register_all(&mut service);
@@ -111,7 +111,7 @@ pub mod test {
             permissions: vec!["*".to_string()],
         });
 
-        service
+        service.build()
     }
 
     #[allow(unused)]

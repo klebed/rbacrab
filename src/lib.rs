@@ -44,8 +44,12 @@
 //! }
 //!
 //! fn test_rbac() {
-//!    let mut rbac_service = RbacService::new(None);
-//!    rbac_service.add_role(Role {
+//!    let mut rbac_service_builder = RbacService::builder();
+//! 
+//!    // (optional) Register domain permission sets in RBAC service to collect full list.
+//!    Orders::register_all(&mut rbac_service_builder);
+//! 
+//!    rbac_service_builder.add_role(Role {
 //!        name: "OrderManager".to_string(),
 //!        permissions: vec![
 //!            "Orders::Order::*".to_string(),
@@ -54,10 +58,12 @@
 //!        ],
 //!    });
 //!    
-//!    rbac_service.add_role(Role {
+//!    rbac_service_builder.add_role(Role {
 //!        name: "Admin".to_string(),
 //!        permissions: vec!["*".to_string()],
 //!    });
+//! 
+//!    let rbac_service = rbac_service_builder.build();
 //!
 //!    let user = User {
 //!         name: "user".to_string(),
@@ -72,6 +78,26 @@
 //!    assert!(rbac_service.has_permission(&user, Orders::Order::Update).is_ok());
 //!    assert!(rbac_service.has_permission(&user, Orders::Invoice::Send).is_err());
 //!    assert!(rbac_service.has_permission(&admin, Orders::Invoice::Send).is_ok());
+//! 
+//!    // Runtime update RBAC service roles with new set of roles:
+//!    
+//!    // Get clean updater (in case if old roles needed, use .updater_copy())
+//!    let mut updater = rbac_service.updater_clean();
+//! 
+//!    updater.add_role(Role {
+//!        name: "OrderManager".to_string(),
+//!        permissions: vec![
+//!            "Orders::Order::*".to_string(),
+//!            "Orders::OrderItem::*".to_string(),
+//!            "Orders::Invoice::{Read,Generate,Send}".to_string(),
+//!        ],
+//!    });
+//! 
+//!    // Swap roles inside service (atomicly)
+//!    updater.update(&rbac_service);
+//! 
+//!    assert!(rbac_service.has_permission(&user, Orders::Invoice::Send).is_ok());
+//! 
 //! }
 //!
 //! test_rbac();
@@ -80,11 +106,11 @@
 use std::fmt;
 mod example;
 mod r#macro;
-mod registry;
+mod service;
 #[cfg(test)]
 mod tests;
 
-pub use registry::RbacService;
+pub use service::{RbacService, RbacServiceBuilder, RbacServiceUpdater};
 use serde::{Deserialize, Serialize};
 
 

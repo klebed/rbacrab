@@ -50,20 +50,20 @@ impl RbacSubject for User {
 }
 
 fn test_rbac() {
-   let mut rbac_service = RbacService::new();
-   rbac_service.add_role(Role {
+   let rbac_service = RbacService::builder()
+   .add_role(Role {
        name: "OrderManager".to_string(),
        permissions: vec![
            "Orders::Order::*".to_string(),
            "Orders::OrderItem::*".to_string(),
            "Orders::Invoice::{Read,Generate}".to_string(),
        ],
-   });
-   
-   rbac_service.add_role(Role {
+   })
+   .add_role(Role {
        name: "Admin".to_string(),
        permissions: vec!["*".to_string()],
-   });
+   })
+    .build();
 
    let user = User {
         name: "user".to_string(),
@@ -78,6 +78,26 @@ fn test_rbac() {
    assert!(rbac_service.has_permission(&user, Orders::Order::Update).is_ok());
    assert!(rbac_service.has_permission(&user, Orders::Invoice::Send).is_err());
    assert!(rbac_service.has_permission(&admin, Orders::Invoice::Send).is_ok());
+
+    // Runtime update RBAC service roles with new set of roles:
+    
+    // Get clean updater (in case if old roles needed, use .updater_copy())
+    let mut updater = rbac_service.updater_clean();
+ 
+    updater.add_role(Role {
+        name: "OrderManager".to_string(),
+        permissions: vec![
+            "Orders::Order::*".to_string(),
+            "Orders::OrderItem::*".to_string(),
+            "Orders::Invoice::{Read,Generate,Send}".to_string(),
+        ],
+    });
+ 
+    // Swap roles inside service (atomicly)
+    updater.update(&rbac_service);
+ 
+    assert!(rbac_service.has_permission(&user, Orders::Invoice::Send).is_ok());
+
 }
 
 test_rbac();

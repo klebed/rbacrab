@@ -121,9 +121,9 @@ macro_rules! define_permissions {
             )*
 
             // Helper function to register all permissions from this domain
-            pub fn register_all(registry: &mut $crate::RbacService) {
+            pub fn register_all(registry: &mut $crate::RbacServiceBuilder) {
                 $(
-                    registry.register::<$object_type>();
+                    registry.register_permissions::<$object_type>();
                 )*
             }
         }
