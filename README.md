@@ -1,9 +1,15 @@
 # RBACrab
 
-Rust 🦀RBAC🦀 library with some crabby🦀🧙 macro magic! Not so blazingly fast yet, but has all 🚀🚀🚀 chances!
+Rust 🦀RBAC🦀 micro library with some crabby🦀🧙 macro magic! Not so blazingly fast yet, but has all 🚀🚀🚀 chances!
 
 <p style="text-align: center;"><img src="img/rbacrab.png" alt="RBACrab" width="400"/></p>
 
+Library intended to be lightweight and simple as possible. 
+
+Role is serializable and deserializable, so library user may store it anywhere (config files, DB, external service).
+When role created or deserialized it compiles with several layers of sets, starting from global wildcard permission (all domains, all objects, all actions permitted)
+
+Permission check require statically typed variant created by convenient macro define_permissions! or implemented Permission trait.
 
 Basic usage example:
 
@@ -51,18 +57,18 @@ impl RbacSubject for User {
 
 fn test_rbac() {
    let rbac_service = RbacService::builder()
-   .add_role(Role {
-       name: "OrderManager".to_string(),
-       permissions: vec![
+   .add_role(Role::new(
+       "OrderManager",
+       vec![
            "Orders::Order::*".to_string(),
            "Orders::OrderItem::*".to_string(),
            "Orders::Invoice::{Read,Generate}".to_string(),
        ],
-   })
-   .add_role(Role {
-       name: "Admin".to_string(),
-       permissions: vec!["*".to_string()],
-   })
+   ))
+   .add_role(Role::new(
+       "Admin",
+       vec!["*".to_string()],
+   ))
     .build();
 
    let user = User {
@@ -84,14 +90,14 @@ fn test_rbac() {
     // Get clean updater (in case if old roles needed, use .updater_copy())
     let mut updater = rbac_service.updater_clean();
  
-    updater.add_role(Role {
-        name: "OrderManager".to_string(),
-        permissions: vec![
+    updater.add_role(Role::new(
+        "OrderManager".to_string(),
+        vec![
             "Orders::Order::*".to_string(),
             "Orders::OrderItem::*".to_string(),
             "Orders::Invoice::{Read,Generate,Send}".to_string(),
         ],
-    });
+    ));
  
     // Swap roles inside service (atomicly)
     updater.update(&rbac_service);

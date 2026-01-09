@@ -84,32 +84,32 @@ pub mod test {
         Templates::register_all(&mut service);
         Orders::register_all(&mut service);
 
-        service.add_role(Role {
-            name: "UserManager".to_string(),
-            permissions: vec!["Users::User::*".to_string(), "Users::Method::*".to_string()],
-        });
+        service.add_role(Role::new(
+            "UserManager",
+            vec!["Users::User::*".to_string(), "Users::Method::*".to_string()],
+        ));
 
-        service.add_role(Role {
-            name: "TemplateCreator".to_string(),
-            permissions: vec![
+        service.add_role(Role::new(
+            "TemplateCreator",
+            vec![
                 "Templates::Template::{Create,Write}".to_string(),
                 "Users::Notify::Write".to_string(),
             ],
-        });
+        ));
 
-        service.add_role(Role {
-            name: "OrderManager".to_string(),
-            permissions: vec![
+        service.add_role(Role::new(
+            "OrderManager",
+            vec![
                 "Orders::Order::*".to_string(),
                 "Orders::OrderItem::*".to_string(),
                 "Orders::Invoice::{Read,Generate}".to_string(),
             ],
-        });
+        ));
 
-        service.add_role(Role {
-            name: "Admin".to_string(),
-            permissions: vec!["*".to_string()],
-        });
+        service.add_role(Role::new(
+            "Admin",
+            vec!["*".to_string()],
+        ));
 
         service.build()
     }

@@ -250,13 +250,13 @@ fn test_update_roles() {
     );
 
     let mut updater = rbac_service.updater_clean();
-    updater.add_role(Role {
-            name: "TemplateCreator".to_string(),
-            permissions: vec![
+    updater.add_role(Role::new(
+            "TemplateCreator",
+            vec![
                 "Templates::Template::{Create}".to_string(),
                 "Users::Notify::Write".to_string(),
             ],
-        });
+        ));
 
     updater.update(&rbac_service);
 

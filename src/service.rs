@@ -1,4 +1,4 @@
-use std::{collections::{BTreeMap, HashMap, HashSet}, sync::Arc};
+use std::{collections::{BTreeMap, HashMap}, sync::Arc};
 
 use arc_swap::{ArcSwap};
 
@@ -150,55 +150,13 @@ impl RbacService {
                 Some(role) => role,
                 None => continue,
             };
-
-            for perm_pattern in &role.permissions {
-                if self.matches_pattern(&perm_str, perm_pattern, domain, object_type) {
-                    return Ok(());
-                }
+            
+            if role.compiled_permissions.matches(&perm_str, domain, object_type) {
+                return Ok(());
             }
         }
 
         Err(RbacError::PermissionDenied(perm_str))
-    }
-
-    fn matches_pattern(&self, perm: &str, pattern: &str, domain: &str, object_type: &str) -> bool {
-        // Handle global wildcard: "*"
-        if pattern == "*" {
-            return true;
-        }
-
-        // Handle domain-level wildcards: "Users::*"
-        if pattern == format!("{}::*", domain) {
-            return perm.starts_with(&format!("{}::", domain));
-        }
-
-        // Handle object-level wildcards: "Users::User::*"
-        if pattern == format!("{}::{}::*", domain, object_type) {
-            return perm.starts_with(&format!("{}::{}::", domain, object_type));
-        }
-
-        // Handle action sets: "Users::User::{Create,Write}"
-        if pattern.contains('{') && pattern.contains('}') {
-            let parts: Vec<&str> = pattern.split("::").collect();
-            if parts.len() == 3 {
-                let pat_domain = parts[0];
-                let pat_object = parts[1];
-                let actions_str = parts[2].trim_matches(|c| c == '{' || c == '}');
-
-                if pat_domain == domain && pat_object == object_type {
-                    let allowed_actions: HashSet<_> =
-                        actions_str.split(',').map(|s| s.trim()).collect();
-
-                    let perm_parts: Vec<&str> = perm.split("::").collect();
-                    if perm_parts.len() == 3 {
-                        return allowed_actions.contains(perm_parts[2]);
-                    }
-                }
-            }
-        }
-
-        // Exact match
-        perm == pattern
     }
 
     pub fn get_all_permissions(&self) -> Vec<&PermissionInfo> {
