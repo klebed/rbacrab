@@ -8,7 +8,7 @@ authors = [
     ]
 repository = "https://github.com/klebed/rbacrab"
 license = "MIT"
-readme = "Readme.md"
+readme = "README.md"
 keywords = ["library", "rbac", "authorization"]
 categories = ["security", "web-programming"]
 publish = true
