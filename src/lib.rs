@@ -233,7 +233,7 @@ impl Role {
 pub struct CompiledPermissions {
     global_permission: bool,
     domain_wildcards: HashSet<String>,
-    // (Domain, Object)
+    // Domain::Object
     object_wildcards: HashSet<(String, String)>,
     exact_permissions: HashSet<String>,
 }

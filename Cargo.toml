@@ -6,7 +6,12 @@ description = "Rust 🦀RBAC🦀 library with some crabby🦀🧙 macro magic! N
 authors = [
     "Kirill Lebedev (https://github.com/klebed)", 
     ]
-publish = false
+repository = "https://github.com/klebed/rbacrab"
+license = "MIT"
+readme = "Readme.md"
+keywords = ["library", "rbac", "authorization"]
+categories = ["security", "web-programming"]
+publish = true
 
 [dependencies]
 serde = {version = "1.0", features = ["serde_derive"]}
