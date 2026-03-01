@@ -1,6 +1,6 @@
 [package]
 name = "rbacrab"
-version = "0.0.2"
+version = "0.0.3"
 edition = "2024"
 description = "Rust 🦀RBAC🦀 library with some crabby🦀🧙 macro magic! Not so blazingly fast yet, but has all 🚀🚀🚀 chances."
 authors = [
@@ -15,7 +15,7 @@ publish = true
 
 [dependencies]
 serde = {version = "1.0", features = ["serde_derive"]}
-arc-swap = "1.8"
+arc-swap = "~1.8"
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
