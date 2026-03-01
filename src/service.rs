@@ -108,7 +108,7 @@ impl RbacService {
             all_permissions: BTreeMap::new(),
         }
     }
-    /// Creates clean updater ([RbacServiceBuilder]) for updating [RbacService] roles in runtime.
+    /// Creates clean updater ([RbacServiceUpdater]) for updating [RbacService] roles in runtime.
     /// Updated roles set would be swapped atomically, when [updater.update(&mut rbac_service)][RbacServiceUpdater#method.update] called.
     pub fn updater_clean(&self) -> RbacServiceUpdater {
         RbacServiceUpdater {
@@ -117,12 +117,15 @@ impl RbacService {
         }
     }
 
-    /// Creates updater ([RbacServiceBuilder]) for updating [RbacService] roles in runtime. 
+    /// Creates updater ([RbacServiceUpdater]) for updating [RbacService] roles in runtime. 
     /// Updater would have copy of roles, which may be handy in case if small number of roles should be added/updated/removed
     pub fn updater_copy(&self) -> RbacServiceUpdater {
         RbacServiceUpdater {
             roles: self.roles.load().as_ref().clone(),
-            fallback_roles: None,
+            fallback_roles: match self.fallback_roles.is_empty() {
+                true => None,
+                false => Some(self.fallback_roles.clone()),
+            },
         }
     }
 
@@ -132,9 +135,9 @@ impl RbacService {
         subject: &impl RbacSubject,
         permission: P,
     ) -> Result<(), RbacError> {
-        let perm_str = permission.to_permission_string();
         let domain = P::domain();
         let object_type = permission.object_type();
+        let action = permission.action();
         let subject_roles = subject.get_roles();
         let subject_roles = if subject_roles.is_empty() {
             &self.fallback_roles
@@ -150,13 +153,13 @@ impl RbacService {
                 Some(role) => role,
                 None => continue,
             };
-            
-            if role.compiled_permissions.matches(&perm_str, domain, object_type) {
+
+            if role.compiled_permissions.matches(domain, object_type, action) {
                 return Ok(());
             }
         }
 
-        Err(RbacError::PermissionDenied(perm_str))
+        Err(RbacError::PermissionDenied(permission.to_permission_string()))
     }
 
     pub fn get_all_permissions(&self) -> Vec<&PermissionInfo> {

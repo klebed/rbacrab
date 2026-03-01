@@ -111,7 +111,7 @@
 //!
 //!```
 use std::{
-    collections::{HashSet},
+    collections::{HashMap, HashSet},
     fmt,
 };
 mod example;
@@ -233,15 +233,16 @@ impl Role {
 pub struct CompiledPermissions {
     global_permission: bool,
     domain_wildcards: HashSet<String>,
-    // Domain::Object
-    object_wildcards: HashSet<(String, String)>,
-    exact_permissions: HashSet<String>,
+    /// Domain → set of object types with wildcard permissions
+    object_wildcards: HashMap<String, HashSet<String>>,
+    /// Domain → Object → set of actions
+    exact_permissions: HashMap<String, HashMap<String, HashSet<String>>>,
 }
 
 impl CompiledPermissions {
     pub fn compile(permissions: &Vec<String>) -> Self {
         let mut compiled = CompiledPermissions::default();
-        
+
         for perm in permissions {
             // Check for global wildcard
             if perm == "*" {
@@ -251,49 +252,59 @@ impl CompiledPermissions {
                     ..Default::default()
                 };
             }
-            
+
             let parts: Vec<&str> = perm.split("::").collect();
-            
+
             match parts.len() {
                 2 if parts[1] == "*" => {
                     // Domain wildcard: "Users::*"
                     let domain = parts[0].to_string();
                     compiled.domain_wildcards.insert(domain.clone());
-                    
+
                     // Remove any object wildcards or exact permissions for this domain
-                    compiled.object_wildcards.retain(|(d, _)| d != &domain);
-                    compiled.exact_permissions.retain(|p| !p.starts_with(&format!("{}::", domain)));
+                    compiled.object_wildcards.remove(&domain);
+                    compiled.exact_permissions.remove(&domain);
                 }
                 3 if parts[2] == "*" => {
                     // Object wildcard: "Users::User::*"
                     let domain = parts[0].to_string();
                     let object = parts[1].to_string();
-                    
+
                     // Only add if there's no domain wildcard covering this
                     if !compiled.domain_wildcards.contains(&domain) {
-                        compiled.object_wildcards.insert((domain.clone(), object.clone()));
-                        
+                        compiled.object_wildcards
+                            .entry(domain.clone())
+                            .or_default()
+                            .insert(object.clone());
+
                         // Remove any exact permissions for this domain::object
-                        let prefix = format!("{}::{}::", domain, object);
-                        compiled.exact_permissions.retain(|p| !p.starts_with(&prefix));
+                        if let Some(objects) = compiled.exact_permissions.get_mut(&domain) {
+                            objects.remove(&object);
+                        }
                     }
                 }
                 3 if parts[2].starts_with('{') && parts[2].ends_with('}') => {
                     // Action set: "Users::User::{Create,Write}"
                     let domain = parts[0].to_string();
                     let object = parts[1].to_string();
-                    
+
                     // Only process if not covered by domain or object wildcard
-                    if !compiled.domain_wildcards.contains(&domain) 
-                        && !compiled.object_wildcards.contains(&(domain.clone(), object.clone())) {
-                        
+                    if !compiled.domain_wildcards.contains(&domain)
+                        && !compiled.object_wildcards
+                            .get(&domain)
+                            .is_some_and(|objs| objs.contains(&object))
+                    {
                         let actions_str = &parts[2][1..parts[2].len() - 1];
-                        let actions: Vec<&str> = actions_str.split(',').map(|s| s.trim()).collect();
-                        
-                        // Expand action set into exact permissions
+                        let actions = actions_str.split(',').map(|s| s.trim());
+
+                        let action_set = compiled.exact_permissions
+                            .entry(domain)
+                            .or_default()
+                            .entry(object)
+                            .or_default();
+
                         for action in actions {
-                            let exact_perm = format!("{}::{}::{}", domain, object, action);
-                            compiled.exact_permissions.insert(exact_perm);
+                            action_set.insert(action.to_string());
                         }
                     }
                 }
@@ -302,51 +313,60 @@ impl CompiledPermissions {
                     if parts.len() == 3 {
                         let domain = parts[0].to_string();
                         let object = parts[1].to_string();
-                        
+                        let action = parts[2].to_string();
+
                         // Only add if not covered by domain or object wildcard
-                        if !compiled.domain_wildcards.contains(&domain) 
-                            && !compiled.object_wildcards.contains(&(domain, object)) {
-                            compiled.exact_permissions.insert(perm.to_owned());
+                        if !compiled.domain_wildcards.contains(&domain)
+                            && !compiled.object_wildcards
+                                .get(&domain)
+                                .is_some_and(|objs| objs.contains(&object))
+                        {
+                            compiled.exact_permissions
+                                .entry(domain)
+                                .or_default()
+                                .entry(object)
+                                .or_default()
+                                .insert(action);
                         }
-                    } else {
-                        // Invalid format, but add as exact match anyway
-                        compiled.exact_permissions.insert(perm.to_owned());
                     }
                 }
             }
         }
-        
+
         compiled
     }
-    
-    /// Check if permission matches - O(1) with no allocations
+
+    /// Check if permission matches
     #[inline]
     pub fn matches(
         &self,
-        perm_str: &str,
         domain: &str,
         object_type: &str,
+        action: &str,
     ) -> bool {
         // 1. Global wildcard check
         if self.global_permission {
             return true;
         }
-        
+
         // 2. Domain wildcard hash lookup
         if self.domain_wildcards.contains(domain) {
             return true;
         }
-        
+
         // 3. Object wildcard hash lookup
-        if self.object_wildcards.contains(&(domain.to_string(), object_type.to_string())) {
+        if self.object_wildcards.get(domain).is_some_and(|objs| objs.contains(object_type)) {
             return true;
         }
-        
+
         // 4. Exact match hash lookup
-        if self.exact_permissions.contains(perm_str) {
+        if self.exact_permissions.get(domain)
+            .and_then(|objs| objs.get(object_type))
+            .is_some_and(|actions| actions.contains(action))
+        {
             return true;
         }
-        
+
         false
     }
 }
