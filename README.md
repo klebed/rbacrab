@@ -1,15 +1,42 @@
 # RBACrab
 
-Rust 🦀RBAC🦀 micro library with some crabby🦀🧙 macro magic! Not so blazingly fast yet, but has all 🚀🚀🚀 chances!
+Rust 🦀RBAC🦀 micro library with some crabby🦀🧙 macro magic! Blazingly 🚀🚀🚀 fast!
 
 <p style="text-align: center;"><img src="img/rbacrab.png" alt="RBACrab" width="400"/></p>
 
 Library intended to be lightweight and simple as possible. 
 
-Role is serializable and deserializable, so library user may store it anywhere (config files, DB, external service).
-When role created or deserialized it compiles with several layers of sets, starting from global wildcard permission (all domains, all objects, all actions permitted)
+  Type-safe, zero-allocation RBAC for Rust. 2 dependencies. ~800 lines.                         
+                                         
+  ## Why RBACrab
 
-Permission check require statically typed variant created by convenient macro define_permissions! or implemented Permission trait.
+  - **Compile-time permission safety.** The `define_permissions!` macro generates typed enums — `Orders::Invoice::Read`, not `"orders.invoice.read"`. Typos are caught by the compiler, not by a 3am production alert.
+  - **Zero-allocation permission checks.** `has_permission()` does pure `&str` hash lookups. No `String` construction on the hot path. tens of nanoseconds per check.
+  - **Roles are data, not code.** Roles are serializable (serde) — store them in a database, config file, or external service. Permissions are code. This separation means you can change who can do what without redeploying.
+  - **Lock-free runtime updates.** Swap the entire role set atomically via `arc-swap`. Readers never block. Zero downtime role reloads.
+  - **Composition over inheritance.** Users hold multiple roles — the permission check is a flat union. No inheritance chains, no diamond problem, no cascading side effects. The Rust way.
+  - **Thread-safe by design.** `RbacService` is `Send + Sync`. Works in any async runtime.
+
+  ## Permission Hierarchy
+
+  Three levels: **Domain → Object → Action**
+
+  ```
+  Users::User::Read       — single permission
+  Users::User::*          — all actions on User
+  Users::*                — all objects and actions in Users domain
+  *                       — everything
+  ```
+
+  Roles specify permissions as strings with wildcards and action sets:
+
+  ```rust
+  Role::new("OrderManager", vec![
+      "Orders::Order::*".to_string(),                    // all Order actions
+      "Orders::Invoice::{Read,Generate}".to_string(),    // specific Invoice actions
+  ])
+  ```
+
 
 Basic usage example:
 
@@ -91,7 +118,7 @@ fn test_rbac() {
     let mut updater = rbac_service.updater_clean();
  
     updater.add_role(Role::new(
-        "OrderManager".to_string(),
+        "OrderManager",
         vec![
             "Orders::Order::*".to_string(),
             "Orders::OrderItem::*".to_string(),
