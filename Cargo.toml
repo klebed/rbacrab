@@ -16,3 +16,11 @@ publish = true
 [dependencies]
 serde = {version = "1.0", features = ["serde_derive"]}
 arc-swap = "1.8"
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+serde_json = "1.0"
+
+[[bench]]
+name = "rbac_benchmarks"
+harness = false
