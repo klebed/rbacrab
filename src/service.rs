@@ -166,6 +166,11 @@ impl RbacService {
         self.all_permissions.values().collect()
     }
 
+    /// Returns a snapshot of all currently configured roles.
+    pub fn get_roles(&self) -> Vec<Role> {
+        self.roles.load().values().cloned().collect()
+    }
+
     pub fn get(&self, perm: &str) -> Option<&PermissionInfo> {
         self.all_permissions.get(perm)
     }
